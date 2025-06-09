@@ -25,20 +25,20 @@ jobs:
 
   snyk-scan:
     needs: sonar-scan
-    if: always()
+    if: always() # Always run, even if SonarQube fails
     name: Snyk Security Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Snyk Security Scan
         uses: snyk/actions/maven@master
-        continue-on-error: true
+        continue-on-error: false # Fail step if vulnerabilities are found
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   zap-scan:
     needs: snyk-scan
-    if: always()
+    if: always() # Always run, even if Snyk fails
     name: OWASP ZAP Scan
     runs-on: ubuntu-latest
     steps:
