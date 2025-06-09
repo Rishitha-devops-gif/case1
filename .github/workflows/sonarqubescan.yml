@@ -1,11 +1,14 @@
-name: SonarQube SaaS version i.e SonarCloud
-# on: 
-#   push:
-#     branches:
-#       - main
+name: E2E Security Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
 jobs:
-  build:
-    name: Build and analyze
+  sonarqube:
+    name: SonarQube Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,9 +18,39 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: 21
-          distribution: 'zulu' 
-      - name: Build and analyze
+          distribution: 'zulu'
+      - name: Build and analyze with SonarQube
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.organization=raghugaorgkey -Dsonar.projectKey=raghugaprojectkey 
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.organization=copilot_study1 -Dsonar.projectKey=copilot-study1_copilot-case1
+
+  snyk:
+    name: Snyk Scan
+    runs-on: ubuntu-latest
+    needs:
+      - sonarqube
+    if: always() # Run even if SonarQube fails
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/maven@master
+        continue-on-error: false
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  owasp_zap:
+    name: OWASP ZAP Scan
+    runs-on: ubuntu-latest
+    needs:
+      - snyk
+    if: always() # Run even if Snyk fails
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: ZAP Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: 'https://www.zaproxy.org'
